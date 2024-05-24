@@ -4,6 +4,10 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
 
+from torchvision.models import SwinTransformer
+
+
+
 resnet50_url = 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
 
 
@@ -151,7 +155,7 @@ class ResNet(nn.Module):
                 nn.Conv2d(self.in_planes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion),
             )
-
+        #[3, 4, 6, 3]
         layers = [block(self.in_planes, planes, stride, downsample)]
         self.in_planes = planes * block.expansion
         for i in range(1, blocks):
@@ -188,7 +192,28 @@ class ResNet(nn.Module):
         x = x.permute(0, 2, 3, 1)  # (-1,14,14,30)
 
         return x
+    
 
+
+class SwinTransformerHead(nn.Module):
+    def __init__(self):
+        pass
+
+    def forward(self, x):
+        pass
+
+
+
+class SwinTransformerObjectDetector(nn.Module):
+    def __init__(self, cfg:dict, version:str, head:nn.Module):
+        self.backbone = cfg["BACKBONE"]["SWIN"][version]
+        self.backbone.head = head
+        self.out_dim = cfg["OUTDIM"]
+    
+    def forward(self, x):
+        x = self.backbone(x)
+        x = self.head(x)
+        return x
 
 # resnet50
 def resnet50(pretrained=False, **kwargs):

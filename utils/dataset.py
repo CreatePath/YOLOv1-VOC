@@ -91,10 +91,16 @@ class Dataset(data.Dataset):
         cxcy = (boxes[:, 2:] + boxes[:, :2]) / 2
         for i in range(cxcy.size()[0]):
             cxcy_sample = cxcy[i]
+            #grid cell의 Y축과 X축의 index 계산
             ij = (cxcy_sample / cell_size).ceil() - 1
+            #grid cell의 2개 bbox의  confidence score을 1로 set
             target[int(ij[1]), int(ij[0]), 4] = 1
             target[int(ij[1]), int(ij[0]), 9] = 1
+            #grid cell의 class probability을 1로 set
             target[int(ij[1]), int(ij[0]), int(labels[i]) + 9] = 1
+            #bbox의 중심점 (cx,cy)를 (i,j) grid cell의 원점으로 부터
+            # offset값으로 (delta_x, delta_y) 계산하고 target 행렬 tensor의 
+            # (i,j) grid cell 위치에 정규화한 bbox정보를 저장
             xy = ij * cell_size
             delta_xy = (cxcy_sample - xy) / cell_size
             target[int(ij[1]), int(ij[0]), 2:4] = wh[i]
@@ -255,8 +261,8 @@ class Dataset(data.Dataset):
 def main():
     from torch.utils.data import DataLoader
     import torchvision.transforms as transforms
-    file_root = '../Dataset'
-    with open('../Dataset/train.txt') as f:
+    file_root = './Dataset'
+    with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
     train_dataset = Dataset(root=file_root, file_names=train_names, train=True,
                             transform=[transforms.ToTensor()])

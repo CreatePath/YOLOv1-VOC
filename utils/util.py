@@ -4,8 +4,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+import sys
+sys.path.append(r'/home/user/workspace/yolov1')
 from nets.nn import resnet50
 import torchvision.transforms as transforms
+#from torchvision.ops import nms
 
 VOC_CLASSES = ['aeroplane', 'bicycle', 'bird', 'boat',
                'bottle', 'bus', 'car', 'cat', 'chair',
@@ -36,29 +39,43 @@ COLORS = {'aeroplane': (0, 0, 0),
 
 
 def decoder(prediction):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     grid_num = 14
     boxes = []
     cls_indexes = []
     confidences = []
     cell_size = 1. / grid_num
+    #각 image의 output tensor를 batch 축을 제거하고 [14,14,30] tensor로 변환
+    # output tensor [14,14,30]로부 부터 bbox의 confidence score를 포함하는
+    # tensor의 5번째와 10번재 plane 축 분리, 각각 [14,14] 크기를 갖는 tensor임
+    # 두 tensor의 마지막 축을 하나 더 만들, [14,14,1]
+    # 이 축을 중심으로 두 tensor들을 concatenation함, contain=[14,14,2]
     prediction = prediction.data.squeeze()  # 14x14x30
     contain1 = prediction[:, :, 4].unsqueeze(2)
     contain2 = prediction[:, :, 9].unsqueeze(2)
     contain = torch.cat((contain1, contain2), 2)
+    # contain의 값이 0.1를 갖는 성분들은 true값을 갖고 그렇지 않은 성분을 false로 set함
     mask1 = contain > 0.1
+    # contain의 각 grid cell별로 confidence score의 max 값과 같은 bbox 위치에 mask2에
+    # true값을 set함 그렇지 않은 bbox 위치에 false값을 set함
     mask2 = (contain == contain.max())
+    #mask1과 mask2의 성분별 덧셈을 수행하고 0보다 큰 성분에 대해 mask에 true, 
+    #그렇지 않은 mask위치에 false값을 설정
     mask = (mask1 + mask2).gt(0)
     for i in range(grid_num):
         for j in range(grid_num):
             for b in range(2):
                 if mask[i, j, b] == 1:
+                    #mask tensor에서 grid cell의 bbox에서 값이 true인 경우에 다음 수행
+                    #예측 output tensor로부터 bbox를 시작점과 끝점을 갖는 bbox로 변환
                     box = prediction[i, j, b * 5:b * 5 + 4]
-                    contain_prob = torch.FloatTensor([prediction[i, j, b * 5 + 4]])
+                    contain_prob = torch.FloatTensor([prediction[i, j,b * 5 + 4]]).to(device)
                     xy = torch.FloatTensor([j, i]) * cell_size
-                    box[:2] = box[:2] * cell_size + xy
+                    box[:2] = box[:2] * cell_size + xy.to(device)
                     box_xy = torch.FloatTensor(box.size())
                     box_xy[:2] = box[:2] - 0.5 * box[2:]
                     box_xy[2:] = box[:2] + 0.5 * box[2:]
+                    #bbox의 분류값과 confidence score 계산
                     max_prob, cls_index = torch.max(prediction[i, j, 10:], 0)
                     if float((contain_prob * max_prob)[0]) > 0.1:
                         boxes.append(box_xy.view(1, 4))
@@ -69,19 +86,22 @@ def decoder(prediction):
         confidences = torch.zeros(1)
         cls_indexes = torch.zeros(1)
     else:
-        boxes = torch.cat(boxes, 0)  # (n,4)
+        boxes = torch.cat(boxes, 0).to(device)  # (n,4)
         confidences = torch.cat(confidences, 0)  # (n,)
         cls_indexes = [item.unsqueeze(0) for item in cls_indexes]
         cls_indexes = torch.cat(cls_indexes, 0)  # (n,)
-    keep = nms(boxes, confidences)
+    #bbox정보와 confidence정보를 이용하여 NMS 알고리즘을 수행하여 중복된 bbox제거    
+    keep = nms(boxes, confidences, threshold=0.5)
     return boxes[keep], cls_indexes[keep], confidences[keep]
 
 
 def nms(b_boxes, scores, threshold=0.5):
-    x1 = b_boxes[:, 0]
-    y1 = b_boxes[:, 1]
-    x2 = b_boxes[:, 2]
-    y2 = b_boxes[:, 3]
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    x1 = b_boxes[:, 0].to(device)
+    y1 = b_boxes[:, 1].to(device)
+    x2 = b_boxes[:, 2].to(device)
+    y2 = b_boxes[:, 3].to(device)
     areas = (x2 - x1) * (y2 - y1)
 
     _, order = scores.sort(0, descending=True)
@@ -112,8 +132,8 @@ def nms(b_boxes, scores, threshold=0.5):
         order = order[ids + 1]
     return torch.LongTensor(keep)
 
-
 def predict(model, img_name, root_path=''):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     results = []
     img = cv2.imread(root_path + img_name)
     h, w, _ = img.shape
@@ -125,11 +145,12 @@ def predict(model, img_name, root_path=''):
     transform = transforms.Compose([transforms.ToTensor(), ])
     img = transform(img)
     img = img[None, :, :, :]
-    img = img.cuda()
+    img = img.to(device)
 
-    prediction = model(img).cpu()  # 1x14x14x30
+    prediction = model(img).to(device)  # 1x14x14x30
     boxes, cls_indexes, confidences = decoder(prediction)
 
+    #정규화되고 시작점과 끝점으로 표현된 bbox를 original image 상에서 크기로 변환함
     for i, box in enumerate(boxes):
         x1 = int(box[0] * w)
         x2 = int(box[2] * w)
@@ -152,13 +173,14 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    model.load_state_dict(torch.load('yolo.pth')['state_dict'])
+    model.load_state_dict(torch.load('./weights/yolov1_0010.pth')['state_dict'])
     model.eval()
-    image_name = 'assets/person.jpg'
-    image = cv2.imread(image_name)
-
-    print('\nPREDICTING...')
-    result = predict(model, image_name)
+    
+    with torch.no_grad():
+        image_name = './assets/person.jpg'
+        image = cv2.imread(image_name)
+        print('\nPREDICTING...')
+        result = predict(model, image_name)
 
     for x1y1, x2y2, class_name, _, prob in result:
         color = COLORS[class_name]
@@ -172,6 +194,6 @@ if __name__ == '__main__':
                       color, -1)
         cv2.putText(image, label, (p1[0], p1[1] + baseline), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, 8)
 
-    cv2.imwrite('result.jpg', image)
+    cv2.imwrite('./result.jpg', image)
     cv2.imshow('Prediction', image)
     cv2.waitKey(0)

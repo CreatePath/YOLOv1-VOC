@@ -7,6 +7,7 @@ import torch.nn as nn
 
 from nets.nn import resnet50
 from utils.util import predict
+
 import argparse
 
 VOC_CLASSES = ['aeroplane', 'bicycle', 'bird', 'boat',
@@ -47,13 +48,14 @@ def detect(args):
         model = nn.DataParallel(model)
 
     # if you have single gpu then please modify model loading process
-    model.load_state_dict(torch.load('yolo.pth')['state_dict'])
+    model.load_state_dict(torch.load('./weights/yolov1_0010.pth')['state_dict'])
     model.eval()
-    image_name = args.image
-    image = cv2.imread(image_name)
+    with torch.no_grad():
+        image_name = args.image
+        image = cv2.imread(image_name)
 
-    print('\nPREDICTING...')
-    result = predict(model, image_name)
+        print('\nPREDICTING...')
+        result = predict(model, image_name)
 
     for x1y1, x2y2, class_name, _, prob in result:
         color = COLORS[class_name]
@@ -68,7 +70,7 @@ def detect(args):
         cv2.putText(image, label, (p1[0], p1[1] + baseline), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, 8)
 
     if args.save_img:
-        cv2.imwrite('result.jpg', image)
+        cv2.imwrite('./result.jpg', image)
 
     cv2.imshow('Prediction', image)
     cv2.waitKey(0)

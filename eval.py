@@ -117,7 +117,7 @@ class Evaluation:
             print(f'{class_name}'.ljust(25, ' '), f'{ap:.2f}')
             aps.append(ap)
 
-        return aps
+        return aps 
 
 
 if __name__ == '__main__':
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     im_show = False
 
     print('DATA PREPARING...')
-    with open('../Dataset/test.txt') as f:
+    with open('./Dataset/test.txt') as f:
         lines = f.readlines()
 
     for line in lines:
@@ -141,7 +141,7 @@ if __name__ == '__main__':
         image_name = f'{line}.jpg'
         image_list.append(image_name)
 
-        with open(f'../Dataset/Labels/{line}.txt') as f:
+        with open(f'./Dataset/Labels/{line}.txt') as f:
             objects = f.readlines()
 
         for object in objects:
@@ -156,40 +156,41 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    model.load_state_dict(torch.load('yolo.pth')['state_dict'])
+    model.load_state_dict(torch.load('./weights/yolov1_0001.pth')['state_dict'])
     model.eval()
-
+    
     # image_list = image_list[:500]
-    for image_name in tqdm(image_list):
+    with torch.no_grad():
+        for image_name in tqdm(image_list):
 
-        result = predict(model, image_name, root_path='../Dataset/Images/')
+            result = predict(model, image_name, root_path='./Dataset/Images/')
 
-        for (x1, y1), (x2, y2), class_name, image_name, conf in result:
-            predictions[class_name].append([image_name, conf, x1, y1, x2, y2])
+            for (x1, y1), (x2, y2), class_name, image_name, conf in result:
+                predictions[class_name].append([image_name, conf, x1, y1, x2, y2])
 
-        if im_show:
-            image = cv2.imread('../Dataset/Images/' + image_name)
+            if im_show:
+                image = cv2.imread('./Dataset/Images/' + image_name)
 
-            for x1y1, x2y2, class_name, _, prob in result:
-                color = COLORS[class_name]
-                cv2.rectangle(image, x1y1, x2y2, color, 2)
+                for x1y1, x2y2, class_name, _, prob in result:
+                    color = COLORS[class_name]
+                    cv2.rectangle(image, x1y1, x2y2, color, 2)
 
-                label = class_name + str(round(prob, 2))
-                text_size, baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+                    label = class_name + str(round(prob, 2))
+                    text_size, baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
 
-                p1 = (x1y1[0], x1y1[1] - text_size[1])
-                cv2.rectangle(image, (p1[0] - 2 // 2, p1[1] - 2 - baseline),
-                              (p1[0] + text_size[0], p1[1] + text_size[1]), color, -1)
+                    p1 = (x1y1[0], x1y1[1] - text_size[1])
+                    cv2.rectangle(image, (p1[0] - 2 // 2, p1[1] - 2 - baseline),
+                                (p1[0] + text_size[0], p1[1] + text_size[1]), color, -1)
 
-                cv2.putText(image, label, (p1[0], p1[1] + baseline), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1,
-                            8)
+                    cv2.putText(image, label, (p1[0], p1[1] + baseline), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1,
+                                8)
 
-            cv2.imshow('Prediction', image)
-            cv2.waitKey(0)
+                cv2.imshow('Prediction', image)
+                cv2.waitKey(0)
 
     if not im_show:
         print('\nSTART EVALUATION...')
 
-        aps = Evaluation(predictions, targets, threshold=0.6).evaluate()
+        aps = Evaluation(predictions, targets, threshold=0.5).evaluate()
         print(f'mAP: {np.mean(aps):.2f}')
         print('\nDONE.')
