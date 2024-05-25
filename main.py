@@ -31,8 +31,7 @@ def main(args):
     torch.manual_seed(seed)
 
     # net = resnet50()
-    net = swintransformer(NET_CONFIG)
-    print(net.state_dict().keys())
+    net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_B)
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -66,8 +65,8 @@ def main(args):
         else:
             params += [{'params': [value], 'lr': learning_rate}]
 
-    pred = net(torch.randn((1, 3, 448, 448), device=device))
-    print(pred.shape)
+    # pred = net(torch.randn((1, 3, 448, 448), device=device))
+    # print(pred.shape)
 
     optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)

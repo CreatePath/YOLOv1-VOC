@@ -2,3 +2,4 @@ VOC*
 VOC*/**/
 Dataset
 weights
+/**/__pycache__
