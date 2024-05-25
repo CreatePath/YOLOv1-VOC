@@ -1,4 +1,4 @@
-from swin_config import SWIN_CONFIG
+from .swin_config import SWIN_CONFIG
 
 NET_CONFIG = {
     "BACKBONE": {
@@ -8,6 +8,9 @@ NET_CONFIG = {
     "OUTCHANNEL": 30,
     "OUTHEIGHT": 14,
     "OUTWIDTH": 14,
+    "TRAIN_WEIGHTS": {
+        "SWIN": ["head"]
+    }
 }
 
 

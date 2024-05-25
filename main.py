@@ -7,9 +7,13 @@ import torch
 import torchvision
 from torchvision import transforms
 
-from nets.nn import resnet50
+from copy import deepcopy
+
+from nets.nn import resnet50, swintransformer
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
+from config.net_config import NET_CONFIG
+from config.swin_config import SwinTransformerVersion
 
 import argparse
 import re
@@ -27,7 +31,8 @@ def main(args):
     torch.manual_seed(seed)
 
     # net = resnet50()
-    # net = swin_b(Swin_B_Weights)
+    net = swintransformer(NET_CONFIG)
+    print(net.state_dict().keys())
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -39,14 +44,6 @@ def main(args):
             torch.load(f'./weights/{args.pre_weights}')['state_dict'])
     else:
         epoch_start = 1
-        # resnet = torchvision.models.resnet50(pretrained=True)
-        # new_state_dict = resnet.state_dict()
-    
-        net_dict = net.state_dict()
-        for k in new_state_dict.keys():
-            if k in net_dict.keys() and not k.startswith('fc'):
-                net_dict[k] = new_state_dict[k]
-        net.load_state_dict(net_dict)
 
     print('NUMBER OF CUDA DEVICES:', torch.cuda.device_count())
 
@@ -64,14 +61,17 @@ def main(args):
     params = []
     params_dict = dict(net.named_parameters())
     for key, value in params_dict.items():
-        if key.startswith('features'):
+        if "features" in key:
             params += [{'params': [value], 'lr': learning_rate * 10}]
         else:
             params += [{'params': [value], 'lr': learning_rate}]
 
-    optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    pred = net(torch.randn((1, 3, 448, 448), device=device))
+    print(pred.shape)
 
+    optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    # optimizer = torch.optim.Adam(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
@@ -158,5 +158,5 @@ if __name__ == '__main__':
     parser.add_argument("--img_size", type=int, default=448)
     args = parser.parse_args()
     
-    args.pre_weights = 'yolov1_0010.pth'
+    # args.pre_weights = 'yolov1_0010.pth'
     main(args)
