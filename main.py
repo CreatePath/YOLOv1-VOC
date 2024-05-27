@@ -9,7 +9,8 @@ from torchvision import transforms
 
 from copy import deepcopy
 
-from nets.nn import resnet50, swintransformer
+from nets.nn import resnet50
+from nets.swin import swintransformer
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 from config.net_config import NET_CONFIG
@@ -69,7 +70,7 @@ def main(args):
     # print(pred.shape)
 
     optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-    #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    # optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     # optimizer = torch.optim.Adam(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
     with open('./Dataset/train.txt') as f:
@@ -90,10 +91,8 @@ def main(args):
     for epoch in range(epoch_start,num_epochs):
         net.train()
 
-        if epoch == 30:
-            learning_rate = 0.0001
-        if epoch == 40:
-            learning_rate = 0.00001
+        if epoch in [30, 40]:
+            learning_rate /= 10
         for param_group in optimizer.param_groups:
             param_group['lr'] = learning_rate
 

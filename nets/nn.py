@@ -197,62 +197,8 @@ class ResNet(nn.Module):
         x = x.permute(0, 2, 3, 1)  # (-1,14,14,30)
 
         return x
-    
 
 
-class SwinTransformerHead(nn.Module):
-    def __init__(self, inchannel: int, outchannel: int, outheight: int, outwidth: int):
-        super(SwinTransformerHead, self).__init__()
-        norm_layer = partial(nn.LayerNorm, eps=1e-5)
-
-        self.conv1 = nn.Conv2d(inchannel, outchannel, 3, 1, 1)
-        self.norm1 = norm_layer((outchannel, outheight, outwidth))
-
-        self.conv2 = nn.Conv2d(outchannel, outchannel, 3, 1, 1)
-        self.norm2 = norm_layer((outchannel, outheight, outwidth))
-
-        self.gelu = nn.GELU()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.norm1(x)
-        x = self.gelu(x)
-
-        x = self.conv2(x)
-        x = self.norm2(x)
-        x = self.gelu(x)
-
-        return x
-
-
-
-class SwinTransformerBasedYOLOv1(nn.Module):
-    def __init__(self, cfg:dict, version:SwinTransformerVersion=None):
-        super(SwinTransformerBasedYOLOv1, self).__init__()
-        if version:
-            backbone_cfg = cfg["BACKBONE"]["SWIN"][version]
-            self.backbone = backbone_cfg["MODEL"]
-            swin_outdim = backbone_cfg["EMBED_DIM"] * 8
-        else:
-            swin_cfg = cfg["BACKBONE"]["SWIN"]["CUSTOM"]
-            swin_outdim = swin_cfg["EMBED_DIM"] * 8
-            self.backbone = SwinTransformer(swin_cfg["PATCH_SIZE"],
-                                            swin_cfg["EMBED_DIM"],
-                                            swin_cfg["DEPTHS"],
-                                            swin_cfg["NUM_HEADS"],
-                                            swin_cfg["WINDOW_SIZE"],
-                                            stochastic_depth_prob=swin_cfg["STOCHASTIC_DEPTH_PROB"],)
-
-        self.backbone.avgpool = nn.AdaptiveAvgPool2d(cfg["OUTHEIGHT"])
-        self.backbone.flatten = nn.Identity()
-        self.backbone.head = SwinTransformerHead(swin_outdim,
-                                                 cfg["OUTCHANNEL"],
-                                                 cfg["OUTHEIGHT"],
-                                                 cfg["OUTWIDTH"])
-    
-    def forward(self, x):
-        x = self.backbone(x)
-        return x.permute(0, 2, 3, 1)
 
 # resnet50
 def resnet50(pretrained=False, **kwargs):
@@ -261,14 +207,10 @@ def resnet50(pretrained=False, **kwargs):
         model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet50-19c8e357.pth'))
     return model_
 
-# SwinTransformer
-def swintransformer(cfg, version=None):
-    model = SwinTransformerBasedYOLOv1(cfg, version)
-    return model
+
 
 if __name__ == '__main__':
-    # a = torch.randn((2, 3, 448, 448))
-    # model = resnet50()
-    model = SwinTransformerBasedYOLOv1(NET_CONFIG, SWIN_CONFIG)
+    a = torch.randn((2, 3, 448, 448))
+    model = resnet50()
     print(model)
-    # print(model(a).shape)
+    print(model(a).shape)
