@@ -53,7 +53,7 @@ def main(args):
     if torch.cuda.device_count() > 1:
         net = torch.nn.DataParallel(net)
 
-    #summary(net,input_size=(3,448,448))
+    summary(net,input_size=(3,448,448))
     # different learning rate
 
     net.train()
