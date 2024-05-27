@@ -32,7 +32,7 @@ def main(args):
     torch.manual_seed(seed)
 
     # net = resnet50()
-    net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_B)
+    net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -62,14 +62,15 @@ def main(args):
     params_dict = dict(net.named_parameters())
     for key, value in params_dict.items():
         if "features" in key:
-            params += [{'params': [value], 'lr': learning_rate * 10}]
+            continue
+            # params += [{'params': [value], 'lr': learning_rate * 10}]
         else:
             params += [{'params': [value], 'lr': learning_rate}]
 
     # pred = net(torch.randn((1, 3, 448, 448), device=device))
     # print(pred.shape)
 
-    optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(params, lr=learning_rate, weight_decay=5e-4)
     # optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     # optimizer = torch.optim.Adam(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
@@ -149,7 +150,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epoch", type=int, default=30)
-    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")
     parser.add_argument("--save_dir", type=str, default="./weights")

@@ -9,9 +9,18 @@ class SwinTransformerHead(nn.Module):
     def __init__(self, inchannel: int, outchannel: int, outheight: int, outwidth: int):
         super(SwinTransformerHead, self).__init__()
         norm_layer = partial(nn.LayerNorm, eps=1e-5)
-
         self.conv1 = nn.Conv2d(inchannel, outchannel, 1)
         self.norm1 = norm_layer((outchannel, outheight, outwidth))
+
+        # self.conv1 = nn.Conv2d(inchannel, 512, 3, 1, 2)
+        # self.conv2 = nn.Conv2d(512, 256, 3, 1, 2)
+        # self.conv3 = nn.Conv2d(256, 128, 3, 1, 2)
+        # self.conv4 = nn.Conv2d(128, outchannel, 1)
+
+        # self.norm1 = norm_layer((512, outheight, outwidth))
+        # self.norm2 = norm_layer((256, outheight, outwidth))
+        # self.norm3 = norm_layer((128, outheight, outwidth))
+        # self.norm4 = norm_layer((outchannel, outheight, outwidth))
         self.activation = nn.ReLU()
 
     def forward(self, x):

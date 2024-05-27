@@ -124,7 +124,8 @@ if __name__ == '__main__':
     from utils.util import *
     from collections import defaultdict
     from tqdm import tqdm
-    from nets.nn import swintransformer
+    from nets.swin import swintransformer
+    from config.swin_config import SwinTransformerVersion
     from config.net_config import NET_CONFIG
 
     targets = defaultdict(list)
@@ -154,13 +155,14 @@ if __name__ == '__main__':
     print('START TESTING...')
 
     # model = resnet50().to(device)
-    model = swintransformer(NET_CONFIG)
+    model = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
 
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    model.load_state_dict(torch.load('./weights/yolov1_0001.pth')['state_dict'])
+    model.load_state_dict(torch.load('./weights/yolov1_0002.pth')['state_dict'])
+    model = model.to(device)
     model.eval()
     
     # image_list = image_list[:500]
