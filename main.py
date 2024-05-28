@@ -149,8 +149,12 @@ def main(args):
                 save = {'state_dict': net.state_dict(),
                         'optimizer': optimizer.state_dict()}
                 torch.save(save, f"./weights/yolov1_{best_epoch:04}.pth")
-        if early_stopping.early_stop:
-            break
+            if early_stopping.early_stop:
+                break
+        else:
+            save = {'state_dict': net.state_dict(),
+                    'optimizer': optimizer.state_dict()}
+            torch.save(save, f"./weights/yolov1_{epoch:04}.pth")
         
         #if epoch % 5:
         #    save = {'state_dict': net.state_dict()}
