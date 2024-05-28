@@ -124,9 +124,7 @@ if __name__ == '__main__':
     from utils.util import *
     from collections import defaultdict
     from tqdm import tqdm
-    from nets.swin import swintransformer
-    from config.swin_config import SwinTransformerVersion
-    from config.net_config import NET_CONFIG
+    from nets.nn import resnext50
 
     targets = defaultdict(list)
     predictions = defaultdict(list)
@@ -155,7 +153,8 @@ if __name__ == '__main__':
     print('START TESTING...')
 
     # model = resnet50().to(device)
-    model = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
+    # model = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
+    model = resnext50(pretrained=False)
 
 
     if torch.cuda.device_count() > 1:

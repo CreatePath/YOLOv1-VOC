@@ -33,7 +33,7 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    # net = resnet50()
+    # net = resnet50(pretrained=True)
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     net = resnext50(pretrained=False)
     
