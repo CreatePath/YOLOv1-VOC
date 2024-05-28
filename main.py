@@ -13,6 +13,7 @@ from nets.nn import resnet50
 from nets.swin import swintransformer
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
+from utils.earlystoping import EarlyStopping
 from config.net_config import NET_CONFIG
 from config.swin_config import SwinTransformerVersion
 
@@ -26,6 +27,7 @@ def main(args):
     num_epochs = args.epoch
     batch_size = args.batch_size
     learning_rate = args.lr
+    early_stopping = EarlyStopping(args.patience) if args.early_stopping else None
     
     seed = 42
     np.random.seed(seed)
@@ -36,12 +38,12 @@ def main(args):
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
-        strs = args.pre_weights.split('.')[-2]
-        f_name = strs.split('/')[-1]
-        epoch_str = re.search(pattern,f_name).group(1)
+        prefix, epoch_str = args.pre_weights.split('_')
+        # f_name = strs.split('/')[-1]
+        # epoch_str = re.search(pattern,f_name).group(1)
         epoch_start = int(epoch_str) + 1
         net.load_state_dict( \
-            torch.load(f'./weights/{args.pre_weights}')['state_dict'])
+            torch.load(f'./weights/{args.pre_weights}.pth')["state_dict"])
     else:
         epoch_start = 1
 
@@ -71,6 +73,9 @@ def main(args):
     # print(pred.shape)
 
     optimizer = torch.optim.Adam(params, lr=learning_rate, weight_decay=5e-4)
+    if args.pre_weights:
+        optimizer.load_state_dict(torch.load(f"./weights/{args.pre_weights}.pth")["optimizer"])
+
     # optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     # optimizer = torch.optim.Adam(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
@@ -92,10 +97,10 @@ def main(args):
     for epoch in range(epoch_start,num_epochs):
         net.train()
 
-        if epoch in [30, 40]:
-            learning_rate /= 10
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = learning_rate
+        # if epoch in [30, 40]:
+        #     learning_rate /= 10
+        # for param_group in optimizer.param_groups:
+        #     param_group['lr'] = learning_rate
 
         # training
         total_loss = 0.
@@ -134,14 +139,25 @@ def main(args):
             
         validation_loss /= len(test_loader)
         print(f'Validation_Loss:{validation_loss:07.3}')
+
+        if early_stopping:
+            isbest = early_stopping(validation_loss, net)
+            if isbest:
+                best_epoch = epoch
+                save = {'state_dict': net.state_dict(),
+                        'optimizer': optimizer.state_dict()}
+                torch.save(save, f"./weights/yolov1_{best_epoch:04}.pth")
+        if early_stopping.early_stop:
+            break
         
         #if epoch % 5:
         #    save = {'state_dict': net.state_dict()}
         #    torch.save(save, f'./weights/yolov1_{epoch+1:04d}.pth')
-        save = {'state_dict': net.state_dict()}
-        torch.save(save, f'./weights/yolov1_{epoch:04d}.pth')
+        # save = {'state_dict': net.state_dict()}
+        # torch.save(save, f'./weights/yolov1_{epoch:04d}.pth')
 
-    save = {'state_dict': net.state_dict()}
+    # save = {'state_dict': net.state_dict()}
+    save = {'state_dict': torch.load(f'./weights/yolov1_{best_epoch:04}.pth')['state_dict']}
     torch.save(save, './weights/yolov1_final.pth')
 
 if __name__ == '__main__':
@@ -149,7 +165,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--epoch", type=int, default=30)
+    parser.add_argument("--epoch", type=int, default=200)
+    parser.add_argument('--early-stopping', dest='early_stopping', action='store_true')
+    parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")
