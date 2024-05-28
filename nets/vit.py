@@ -139,6 +139,7 @@ class VisionTransformer(nn.Module):
         x = self.encoder(x)
         x = x.mean(dim=1)
         x = self.out(x)
+        x = x.view(-1, *self.out_size).permute(0, 2, 3, 1) # (-1, 14, 14, 30)
         return x
 
 
