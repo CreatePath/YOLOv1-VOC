@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from copy import deepcopy
 
-from nets.nn import resnet50
+from nets.nn import resnet50, resnext50
 from nets.swin import swintransformer
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
@@ -34,7 +34,9 @@ def main(args):
     torch.manual_seed(seed)
 
     # net = resnet50()
-    net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
+    # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
+    net = resnext50(pretrained=False)
+    
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
