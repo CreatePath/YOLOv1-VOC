@@ -11,6 +11,7 @@ from copy import deepcopy
 
 from nets.nn import resnet50, resnext50
 from nets.swin import swintransformer
+from nets.vit import visionTransformer
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 from utils.earlystoping import EarlyStopping
@@ -28,6 +29,7 @@ def main(args):
     batch_size = args.batch_size
     learning_rate = args.lr
     early_stopping = EarlyStopping(args.patience) if args.early_stopping else None
+    image_size = (3, args.img_size, args.img_size)
     
     seed = 42
     np.random.seed(seed)
@@ -35,7 +37,8 @@ def main(args):
 
     # net = resnet50(pretrained=True)
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
-    net = resnext50(pretrained=False)
+    # net = resnext50(pretrained=False)
+    net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
     
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
