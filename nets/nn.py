@@ -227,12 +227,11 @@ class ResNeXt(nn.Module):
         self.layer2 = self._make_layer(block, 256, layers[1], cardinality, stride=2)
         self.layer3 = self._make_layer(block, 512, layers[2], cardinality, stride=2)
         self.layer4 = self._make_layer(block, 1024, layers[3], cardinality, stride=2)
-        # self.layer5 = self._make_layer(block, 512, layers[3], stride=2)
         self.layer5 = self._make_detnet_layer(in_channels=2048)
-        # self.avgpool = nn.AvgPool2d(14) #fit 448 input size
-        # self.fc = nn.Linear(512 * block.expansion, num_classes)
+
         self.conv_end = nn.Conv2d(256, 30, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn_end = nn.BatchNorm2d(30)
+        
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -249,10 +248,10 @@ class ResNeXt(nn.Module):
                 nn.BatchNorm2d(planes * block.expansion),
             )
         #[3, 4, 6, 3]
-        layers = [block(self.in_planes, planes, stride, downsample)]
+        layers = [block(self.in_planes, planes, stride, downsample, groups=cardinality)]
         self.in_planes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(self.in_planes, planes))
+            layers.append(block(self.in_planes, planes, groups=cardinality))
 
         return nn.Sequential(*layers)
 
