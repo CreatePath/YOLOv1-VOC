@@ -9,7 +9,7 @@ class PatchEmbedding(nn.Module):
         super(PatchEmbedding, self).__init__()
         self.patch_height, self.patch_width = patch_size
 
-        norm_layer = partial(nn.LayerNorm, eps=-1)
+        norm_layer = partial(nn.LayerNorm, eps=-1e-5)
         self.norm1 = norm_layer(patch_dim)
         self.mlp = nn.Linear(patch_dim, dim)
         self.norm2 = norm_layer(dim)
@@ -118,7 +118,7 @@ class VisionTransformer(nn.Module):
         num_patches = (image_height // patch_height) * (image_width // patch_width)
         patch_dim = channels * patch_height * patch_width
 
-        encoder_list = [TransformerEncoderBlock(patch_dim,
+        encoder_list = [TransformerEncoderBlock(dim,
                                                 num_heads,
                                                 mlp_hidden_dim,
                                                 dropout) for _ in range(num_layers)]
@@ -129,6 +129,7 @@ class VisionTransformer(nn.Module):
         
         self.dropout = nn.Dropout(dropout)
         self.out = nn.Linear(dim, reduce(lambda x, y: x * y, out_size))
+        self.relu = nn.ReLU()
     
     def forward(self, x):
         x = self.patch_embedding(x)
@@ -139,6 +140,7 @@ class VisionTransformer(nn.Module):
         x = self.encoder(x)
         x = x.mean(dim=1)
         x = self.out(x)
+        x = self.relu(x)
         x = x.view(-1, *self.out_size).permute(0, 2, 3, 1) # (-1, 14, 14, 30)
         return x
 

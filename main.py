@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from copy import deepcopy
 
-from nets.nn import resnet50, resnext50
+from nets.nn import resnet50, resnext50, resnext152
 from nets.swin import swintransformer
 from nets.vit import visionTransformer
 from utils.loss import yoloLoss
@@ -38,8 +38,8 @@ def main(args):
     # net = resnet50(pretrained=True)
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     # net = resnext50(pretrained=False)
-    net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
-    
+    # net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
+    net = resnext152()
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -86,13 +86,13 @@ def main(args):
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
-    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor()])
+    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor(), lambda x: x / 255])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                             num_workers=os.cpu_count())
 
     with open('./Dataset/test.txt') as f:
         test_names = f.readlines()
-    test_dataset = Dataset(root, test_names, train=False, transform=[transforms.ToTensor()])
+    test_dataset = Dataset(root, test_names, train=False, transform=[transforms.ToTensor(), lambda x: x / 255])
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size // 2, shuffle=False,
                                             num_workers=os.cpu_count())
 

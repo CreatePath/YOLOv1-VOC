@@ -69,7 +69,7 @@ class Bottleneck(nn.Module):
         self.conv3 = nn.Conv2d(planes, planes * self.expansion, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
 
-        self.relu = nn.ReLU(inplace=True)
+        self.activation = nn.LeakyReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
 
@@ -78,11 +78,11 @@ class Bottleneck(nn.Module):
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = self.activation(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.relu(out)
+        out = self.activation(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -91,7 +91,7 @@ class Bottleneck(nn.Module):
             residual = self.downsample(x)
 
         out += residual
-        out = self.relu(out)
+        out = self.activation(out)
 
         return out
 
@@ -299,6 +299,15 @@ def resnet50(pretrained=False, **kwargs):
 # resnext50
 def resnext50(pretrained=False, **kwargs):
     model = ResNeXt(NextBottleneck, [3, 4, 6, 3], **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(ResNeXt50_32X4D_Weights.DEFAULT.url))
+    return model
+
+
+
+# resnext50
+def resnext152(pretrained=False, **kwargs):
+    model = ResNeXt(NextBottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(ResNeXt50_32X4D_Weights.DEFAULT.url))
     return model
