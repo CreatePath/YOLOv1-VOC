@@ -3,3 +3,4 @@ VOC*/**/
 Dataset
 weights
 /**/__pycache__
+assets/CResult*
