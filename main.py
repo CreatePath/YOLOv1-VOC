@@ -10,6 +10,7 @@ from torchvision import transforms
 from copy import deepcopy
 
 from nets.nn import resnet50, resnext50, resnext152
+from nets.convnext import convNext_T
 from nets.swin import swintransformer
 from nets.vit import visionTransformer
 from utils.loss import yoloLoss
@@ -39,7 +40,8 @@ def main(args):
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     # net = resnext50(pretrained=False)
     # net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
-    net = resnext152()
+    # net = resnext152()
+    net = convNext_T(droppath=0.5)
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
