@@ -10,7 +10,7 @@ from torchvision import transforms
 from copy import deepcopy
 
 from nets.nn import resnet50, resnext50, resnext152
-from nets.convnext import convNext_B
+from nets.convnext import convNext_T
 from nets.swin import swintransformer
 from nets.vit import visionTransformer
 from utils.loss import yoloLoss
@@ -36,12 +36,14 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+    torch.autograd.set_detect_anomaly(True)
+
     # net = resnet50()
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     # net = resnext50(pretrained=False)
     # net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
     # net = resnext152()
-    net = convNext_B(droppath=0.5)
+    net = convNext_T(droppath=0.2)
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -89,13 +91,13 @@ def main(args):
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
-    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor(), lambda x: x / 255])
+    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor()])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                             num_workers=os.cpu_count())
 
     with open('./Dataset/test.txt') as f:
         test_names = f.readlines()
-    test_dataset = Dataset(root, test_names, train=False, transform=[transforms.ToTensor(), lambda x: x / 255])
+    test_dataset = Dataset(root, test_names, train=False, transform=[transforms.ToTensor()])
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size // 2, shuffle=False,
                                             num_workers=os.cpu_count())
 
@@ -180,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument("--epoch", type=int, default=200)
     parser.add_argument('--early-stopping', dest='early_stopping', action='store_true')
     parser.add_argument("--patience", type=int, default=5)
-    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")
     parser.add_argument("--save_dir", type=str, default="./weights")

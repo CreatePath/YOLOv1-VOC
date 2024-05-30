@@ -92,6 +92,7 @@ class ConvNeXt(nn.Module):
         self.pool = nn.AdaptiveAvgPool2d((outheight, outwidth))
         self.conv_end = nn.Conv2d(256, outchannel, 1)
         # self.norm_end = self.norm_layer(30)
+        self.sigmoid = nn.Sigmoid()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -123,7 +124,7 @@ class ConvNeXt(nn.Module):
         x = self.pool(x)
         x = self.conv_end(x)
         # x = self.norm_end(x)
-        x = torch.sigmoid(x)
+        x = self.sigmoid(x)
         x = x.permute(0, 2, 3, 1)  # (-1,14,14,30)
 
         return x
