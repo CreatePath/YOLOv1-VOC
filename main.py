@@ -10,7 +10,7 @@ from torchvision import transforms
 from copy import deepcopy
 
 from nets.nn import resnet50, resnext50, resnext152
-from nets.convnext import convNext_T
+from nets.convnext import convNext_B
 from nets.swin import swintransformer
 from nets.vit import visionTransformer
 from utils.loss import yoloLoss
@@ -36,18 +36,19 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    # net = resnet50(pretrained=True)
+    # net = resnet50()
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     # net = resnext50(pretrained=False)
     # net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
     # net = resnext152()
-    net = convNext_T(droppath=0.5)
+    net = convNext_B(droppath=0.5)
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
-        prefix, epoch_str = args.pre_weights.split('_')
+        splited = args.pre_weights.split('_')
         # f_name = strs.split('/')[-1]
         # epoch_str = re.search(pattern,f_name).group(1)
+        epoch_str = splited[-1]
         epoch_start = int(epoch_str) + 1
         net.load_state_dict( \
             torch.load(f'./weights/{args.pre_weights}.pth')["state_dict"])
@@ -153,13 +154,13 @@ def main(args):
                 best_epoch = epoch
                 save = {'state_dict': net.state_dict(),
                         'optimizer': optimizer.state_dict()}
-                torch.save(save, f"./weights/yolov1_{best_epoch:04}.pth")
+                torch.save(save, f"./weights/yolov1_{args.backbone}_{best_epoch:04}.pth")
             if early_stopping.early_stop:
                 break
         else:
             save = {'state_dict': net.state_dict(),
                     'optimizer': optimizer.state_dict()}
-            torch.save(save, f"./weights/yolov1_{epoch:04}.pth")
+            torch.save(save, f"./weights/yolov1_{args.backbone}_{epoch:04}.pth")
         
         #if epoch % 5:
         #    save = {'state_dict': net.state_dict()}
@@ -168,7 +169,7 @@ def main(args):
         # torch.save(save, f'./weights/yolov1_{epoch:04d}.pth')
 
     # save = {'state_dict': net.state_dict()}
-    save = {'state_dict': torch.load(f'./weights/yolov1_{best_epoch:04}.pth')['state_dict']}
+    save = {'state_dict': torch.load(f'./weights/yolov1_{args.backbone}_{best_epoch:04}.pth')['state_dict']}
     torch.save(save, './weights/yolov1_final.pth')
 
 if __name__ == '__main__':
@@ -178,12 +179,13 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epoch", type=int, default=200)
     parser.add_argument('--early-stopping', dest='early_stopping', action='store_true')
-    parser.add_argument("--patience", type=int, default=20)
+    parser.add_argument("--patience", type=int, default=5)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")
     parser.add_argument("--save_dir", type=str, default="./weights")
     parser.add_argument("--img_size", type=int, default=448)
+    parser.add_argument("--backbone", type=str, default='resnet50')
     args = parser.parse_args()
     
     # args.pre_weights = 'yolov1_0010.pth'
