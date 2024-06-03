@@ -124,8 +124,7 @@ if __name__ == '__main__':
     from utils.util import *
     from collections import defaultdict
     from tqdm import tqdm
-    from nets.nn import resnet50, resnext50
-    from nets.convnext import convNext_B
+    from nets.nn import resnet152
     from nets.vit import visionTransformer
     from config.net_config import NET_CONFIG
 
@@ -159,12 +158,12 @@ if __name__ == '__main__':
     # model = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     # model = resnext50(pretrained=False)
     # model = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
-    model = convNext_B()
+    model = resnet152()
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    model.load_state_dict(torch.load('./weights/yolov1_convnext_b_0074.pth')['state_dict'])
+    model.load_state_dict(torch.load('./weights/yolov1_resnet152_0001.pth')['state_dict'])
     model = model.to(device)
     model.eval()
     

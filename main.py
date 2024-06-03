@@ -9,15 +9,10 @@ from torchvision import transforms
 
 from copy import deepcopy
 
-from nets.nn import resnet50, resnext50, resnext152
-from nets.convnext import convNext_B
-from nets.swin import swintransformer
-from nets.vit import visionTransformer
+from nets.nn import resnet152
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 from utils.earlystoping import EarlyStopping
-from config.net_config import NET_CONFIG
-from config.swin_config import SwinTransformerVersion
 
 import argparse
 import re
@@ -41,7 +36,7 @@ def main(args):
     # net = resnext50(pretrained=False)
     # net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
     # net = resnext152()
-    net = convNext_B(droppath=0.1)
+    net = resnet152()
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -80,8 +75,11 @@ def main(args):
     # pred = net(torch.randn((1, 3, 448, 448), device=device))
     # print(pred.shape)
 
-    optimizer = torch.optim.Adam(params, lr=learning_rate, weight_decay=5e-6)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=25, T_mult=2, eta_min=1e-4)
+    optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, 
+                                                                 T_mult=1, eta_min=0.00001)
+    # optimizer = torch.optim.Adam(params, lr=learning_rate, weight_decay=5e-6)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=25, T_mult=2, eta_min=1e-4)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5, eta_min=1e-5)
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3, 9, 15, 20, 30], gamma=0.05)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
