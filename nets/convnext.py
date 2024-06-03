@@ -6,6 +6,7 @@ from timm.models.layers import DropPath
 from functools import partial
 
 from nets.nn import DetNet
+from utils.activation import stable_sigmoid
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -39,27 +40,6 @@ class Bottleneck(nn.Module):
 
 
 
-class Conv1x1Decoder(nn.Module):
-    def __init__(self, inplanes, planes) -> None:
-        super(Conv1x1Decoder, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, 512, 1)
-        self.conv2 = nn.Conv2d(512, 256, 1)
-        self.conv3 = nn.Conv2d(256, 128, 1)
-        self.conv4 = nn.Conv2d(128, planes, 1)
-        self.activation = nn.GELU()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-
-        x = self.activation(x)
-
-        x = self.conv3(x)
-        x = self.conv4(x)
-        return x
-        
-
-
 class ConvNeXt(nn.Module):
     def __init__(self,
                  block:Bottleneck,
@@ -90,9 +70,8 @@ class ConvNeXt(nn.Module):
 
         self.denet = self._make_detnet_layer(in_channels=widths[-1])
         self.pool = nn.AdaptiveAvgPool2d((outheight, outwidth))
-        self.conv_end = nn.Conv2d(256, outchannel, 1)
-        # self.norm_end = self.norm_layer(30)
-        self.sigmoid = nn.Sigmoid()
+        self.conv_end = nn.Conv2d(256, outchannel, 3, 1, 1)
+        self.norm_end = nn.BatchNorm2d(outchannel)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -123,8 +102,8 @@ class ConvNeXt(nn.Module):
         x = self.denet(x)
         x = self.pool(x)
         x = self.conv_end(x)
-        # x = self.norm_end(x)
-        x = self.sigmoid(x)
+        x = self.norm_end(x)
+        x = torch.sigmoid(x)
         x = x.permute(0, 2, 3, 1)  # (-1,14,14,30)
 
         return x

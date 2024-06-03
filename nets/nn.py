@@ -129,11 +129,11 @@ class DetNet(nn.Module):
             )
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
+        out = F.gelu(self.bn1(self.conv1(x)))
+        out = F.gelu(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
         out += self.downsample(x)
-        out = F.relu(out)
+        out = F.gelu(out)
         return out
 
 

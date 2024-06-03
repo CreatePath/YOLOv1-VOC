@@ -11,6 +11,7 @@ import torch
 from torchvision import transforms
 
 from nets.nn import resnet50, resnext50
+from nets.convnext import convNext_B
 from utils.dataset import Dataset
 
 import argparse
@@ -73,7 +74,8 @@ def contest(args):
     
 
     # model = resnet50().to(device)
-    model = resnext50().to(device)
+    # model = resnext50().to(device)
+    model = convNext_B().to(device)
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -111,7 +113,7 @@ def contest(args):
 
     if not im_show:
         print('\nSTART FILE WRIGHTING ...')
-        conFile_path = "./assets/CResult.txt"
+        conFile_path = "./assets/CResult_2.txt"
         confile = open(conFile_path,'w')
         
         for (x1, y1), (x2, y2), class_name, image_name, conf in predictions:# 추출한 물체수만큼 루프를 돈다

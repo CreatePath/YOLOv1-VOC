@@ -10,7 +10,7 @@ from torchvision import transforms
 from copy import deepcopy
 
 from nets.nn import resnet50, resnext50, resnext152
-from nets.convnext import convNext_T
+from nets.convnext import convNext_B
 from nets.swin import swintransformer
 from nets.vit import visionTransformer
 from utils.loss import yoloLoss
@@ -36,14 +36,12 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    torch.autograd.set_detect_anomaly(True)
-
-    # net = resnet50()
+    # net = resnet50()s5
     # net = swintransformer(NET_CONFIG, SwinTransformerVersion.SWIN_T)
     # net = resnext50(pretrained=False)
     # net = visionTransformer(NET_CONFIG["BACKBONE"]["VIT"])
     # net = resnext152()
-    net = convNext_T(droppath=0.2)
+    net = convNext_B(droppath=0.1)
     
     if(args.pre_weights != None): # 학습된 모델 불러오기
         pattern = 'yolov1_([0-9]+)'
@@ -82,9 +80,16 @@ def main(args):
     # pred = net(torch.randn((1, 3, 448, 448), device=device))
     # print(pred.shape)
 
-    optimizer = torch.optim.Adam(params, lr=learning_rate, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(params, lr=learning_rate, weight_decay=5e-6)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=25, T_mult=2, eta_min=1e-4)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5, eta_min=1e-5)
+    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3, 9, 15, 20, 30], gamma=0.05)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
     if args.pre_weights:
         optimizer.load_state_dict(torch.load(f"./weights/{args.pre_weights}.pth")["optimizer"])
+        scheduler.load_state_dict(torch.load(f"./weights/{args.pre_weights}.pth")["scheduler"])
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.05, last_epoch=epoch_start-1)
+        # scheduler.load_state_dict(torch.load(f"./weights/{args.pre_weights}.pth")["scheduler"])
 
     # optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     # optimizer = torch.optim.Adam(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
@@ -132,6 +137,7 @@ def main(args):
             mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
             s = ('%10s' + '%10.4g' + '%10s') % ('%g/%g' % (epoch, num_epochs), total_loss / (i + 1), mem)
             progress_bar.set_description(s)
+        scheduler.step()
         
         
         # validation
@@ -155,20 +161,16 @@ def main(args):
             if isbest:
                 best_epoch = epoch
                 save = {'state_dict': net.state_dict(),
-                        'optimizer': optimizer.state_dict()}
+                        'optimizer': optimizer.state_dict(),
+                        'scheduler': scheduler.state_dict()}
                 torch.save(save, f"./weights/yolov1_{args.backbone}_{best_epoch:04}.pth")
             if early_stopping.early_stop:
                 break
-        else:
+        elif epoch % 5 == 0:
             save = {'state_dict': net.state_dict(),
-                    'optimizer': optimizer.state_dict()}
+                    'optimizer': optimizer.state_dict(),
+                    'scheduler': scheduler.state_dict()}
             torch.save(save, f"./weights/yolov1_{args.backbone}_{epoch:04}.pth")
-        
-        #if epoch % 5:
-        #    save = {'state_dict': net.state_dict()}
-        #    torch.save(save, f'./weights/yolov1_{epoch+1:04d}.pth')
-        # save = {'state_dict': net.state_dict()}
-        # torch.save(save, f'./weights/yolov1_{epoch:04d}.pth')
 
     # save = {'state_dict': net.state_dict()}
     save = {'state_dict': torch.load(f'./weights/yolov1_{args.backbone}_{best_epoch:04}.pth')['state_dict']}
