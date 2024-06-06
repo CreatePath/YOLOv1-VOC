@@ -43,6 +43,63 @@ class Bottleneck(nn.Module):
         return out
 
 
+
+class DivConv(nn.Module):
+    '''
+    yolo는 5:5:20의 비율로 bbox, bbox, classification prediction을 수행
+    해당 비율을 고려하여 설계함.
+    '''
+    expansion = 2
+    def __init__(self, in_planes:int, planes:int, ratio:tuple[int]) -> None:
+        super(DivConv, self).__init__()
+
+        sum_ratio = sum(ratio)
+        self.inplanes_list = []
+        self.convlist = nn.ModuleList()
+        for r in ratio:
+            inplanes_r = in_planes * r // sum_ratio
+            planes_r = planes * r // sum_ratio
+            self.inplanes_list.append(inplanes_r)
+            self.convlist.append(nn.Sequential(
+                nn.Conv2d(inplanes_r, planes_r*self.expansion, kernel_size=3, padding=1),
+                nn.BatchNorm2d(planes_r * self.expansion),
+                nn.ReLU(),
+                nn.Conv2d(planes_r * self.expansion, planes_r, kernel_size=3, padding=1),
+                nn.BatchNorm2d(planes_r)
+            ))
+
+        self.conv3 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, groups=planes)
+        self.bn3 = nn.BatchNorm2d(planes)
+
+        self.downsample = None
+        if in_planes != planes:
+            self.downsample = nn.Conv2d(in_planes, planes, 3, 1, 1)
+        # self.activation = nn.GELU()
+        
+    def forward(self, x):
+        residual = x
+        start = 0
+        splited_x = []
+        for inplanes in self.inplanes_list:
+            splited_x.append(x[:, start:start+inplanes])
+            start += inplanes
+        
+        for i in range(len(splited_x)):
+            splited_x[i] = self.convlist[i](splited_x[i])
+
+        out = torch.concat(splited_x, dim=1)
+        out = self.conv3(out)
+
+        if self.downsample:
+            residual = self.downsample(x)
+
+        out = out + residual
+        out = self.bn3(out)
+        # out = self.activation(out)
+
+        return out
+
+
 class DetNet(nn.Module):
     # no expansion
     # dilation = 2
@@ -90,9 +147,13 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.layer5 = self._make_detnet_layer(in_channels=2048)
-        self.conv_end = nn.Conv2d(256, 30, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn_end = nn.BatchNorm2d(30)
+        # self.conv_end = nn.Conv2d(256, 30, 3, 1, 1, bias=False)
+        # self.bn_end = nn.BatchNorm2d(30)
+        # self.conv_end = nn.Sequential(nn.Conv2d(256, 30, 3, 1, 1, bias=False),
+        #                               *[DivConv
+        #                             (30, 30) for _ in range(3)])
         self.dropout = nn.Dropout2d(0.1)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -117,9 +178,12 @@ class ResNet(nn.Module):
 
     def _make_detnet_layer(self, in_channels):
         layers = [
-            DetNet(in_planes=in_channels, planes=256, block_type='B'),
-            DetNet(in_planes=256, planes=256, block_type='A'),
-            DetNet(in_planes=256, planes=256, block_type='A'),
+            DetNet(in_planes=in_channels, planes=384, block_type='B'),
+            DetNet(in_planes=384, planes=384, block_type='A'),
+            DetNet(in_planes=384, planes=384, block_type='A'),
+            DivConv(384, 192, (1, 1, 4)),
+            DivConv(192, 96, (1, 1, 4)),
+            DivConv(96, 30, (1, 1, 4))
         ]
         return nn.Sequential(*layers)
 
@@ -135,8 +199,8 @@ class ResNet(nn.Module):
         x = self.layer4(x)
         x = self.layer5(x)
         
-        x = self.conv_end(x)
-        x = self.bn_end(x)
+        # x = self.conv_end(x)
+        # x = self.bn_end(x)
         x = self.dropout(x)
         x = torch.sigmoid(x)
         x = x.permute(0, 2, 3, 1)

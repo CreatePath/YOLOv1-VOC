@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import torch
 from torchvision import transforms
 
-from nets.nn import resnet50, resnext50
+from nets.nn import resnet152
 from nets.convnext import convNext_B
 from utils.dataset import Dataset
 
@@ -75,7 +75,8 @@ def contest(args):
 
     # model = resnet50().to(device)
     # model = resnext50().to(device)
-    model = convNext_B().to(device)
+    # model = convNext_B().to(device)
+    model = resnet152().to(device)
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)

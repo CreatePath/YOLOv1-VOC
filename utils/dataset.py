@@ -49,10 +49,12 @@ class Dataset(data.Dataset):
             # img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
+            img = self.randomBGR2GRAY(img)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
             img = self.RandomHue(img)
             img = self.RandomSaturation(img)
+            # img, boxes = self.randomRotate(img, boxes)
             img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
 
@@ -118,8 +120,13 @@ class Dataset(data.Dataset):
     def HSV2BGR(self, img):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
 
+    def randomBGR2GRAY(self, img):
+        if random.random() < 0.4:
+            return cv2.merge([cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)] * 3)
+        return img
+
     def RandomBrightness(self, bgr):
-        if random.random() < 0.5:
+        if random.random() < 0.4:
             hsv = self.BGR2HSV(bgr)
             h, s, v = cv2.split(hsv)
             adjust = random.choice([0.5, 1.5])
@@ -155,6 +162,61 @@ class Dataset(data.Dataset):
         if random.random() < 0.5:
             bgr = cv2.blur(bgr, (5, 5))
         return bgr
+    
+    def randomRotate(self, img, boxes):
+        if random.random() < 0.5:
+            return img, boxes
+        angle = random.random() * 360
+        border_mode = cv2.BORDER_REPLICATE
+        rotated_img = self.rotateImg(img, angle, border_mode)
+        rotated_boxes = self.rotateBox(rotated_img, boxes, angle)
+        return rotated_img, rotated_boxes
+    
+    def rotateImg(self, img, angle, border_mode):
+        height, width = img.shape[:2]  # image shape has 3 dimensions
+        image_center = (width / 2, height / 2)  # getRotationMatrix2D needs coordinates in reverse order (width, height) compared to shape
+
+        rotation_mat = cv2.getRotationMatrix2D(image_center, angle, 1.)
+
+        rotated_mat = cv2.warpAffine(img, rotation_mat, (height, width), borderMode=border_mode)
+        return rotated_mat
+    
+    def rotateBox(self, rotated_img, boxes, angle):
+        new_bbox = []
+
+        H, W = rotated_img.shape[:2]
+        img_center = (H / 2, W / 2)
+        rotation_mat = cv2.getRotationMatrix2D(img_center, angle, 1.)
+
+        for x in boxes:
+            x1, y1, x2, y2 = x
+            corners = np.array([
+                [x1, y1],
+                [x2, y1],
+                [x1, y2],
+                [x2, y2],
+            ])
+            print(corners)
+
+            # 각 꼭짓점을 중심을 기준으로 회전
+            ones = np.ones(shape=(len(corners), 1))
+            corners_ones = np.hstack([corners, ones])
+            
+            transformed_corners = rotation_mat @ corners_ones.T
+            transformed_corners = transformed_corners.T
+            
+            # 회전된 꼭짓점으로 새로운 바운딩 박스 계산
+            x_min = np.min(transformed_corners[:, 0])
+            y_min = np.min(transformed_corners[:, 1])
+            x_max = np.max(transformed_corners[:, 0])
+            y_max = np.max(transformed_corners[:, 1])
+            
+            rotated_bbox = [x_min, y_min, x_max, y_max]
+            print(rotated_bbox)
+
+            new_bbox.append(rotated_bbox)
+
+        return torch.tensor(new_bbox, dtype=torch.float64)
 
     def randomShift(self, bgr, boxes, labels):
         center = (boxes[:, 2:] + boxes[:, :2]) / 2
