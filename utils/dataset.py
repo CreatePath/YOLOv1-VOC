@@ -121,12 +121,12 @@ class Dataset(data.Dataset):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
 
     def randomBGR2GRAY(self, img):
-        if random.random() < 0.4:
+        if random.random() < 0.5:
             return cv2.merge([cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)] * 3)
         return img
 
     def RandomBrightness(self, bgr):
-        if random.random() < 0.4:
+        if random.random() < 0.5:
             hsv = self.BGR2HSV(bgr)
             h, s, v = cv2.split(hsv)
             adjust = random.choice([0.5, 1.5])
