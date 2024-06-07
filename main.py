@@ -73,8 +73,8 @@ def main(args):
 
     optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, 
-                                                                 T_mult=1, eta_min=0.00001)
-
+                                                                 T_mult=2, eta_min=0.00001)
+    scheduler.last_epoch = epoch_start - 1
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
     train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor()])

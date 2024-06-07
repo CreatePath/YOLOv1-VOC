@@ -163,7 +163,7 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    model.load_state_dict(torch.load('./weights/yolov1_0100.pth')['state_dict'])
+    model.load_state_dict(torch.load('./weights/yolov1_0070.pth')['state_dict'])
     model = model.to(device)
     model.eval()
     

@@ -16,7 +16,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4)
-        self.relu = nn.ReLU(inplace=True)
+        self.activation = nn.ReLU()
         self.downsample = downsample
         self.stride = stride
 
@@ -25,11 +25,11 @@ class Bottleneck(nn.Module):
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = self.activation(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.relu(out)
+        out = self.activation(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -38,7 +38,7 @@ class Bottleneck(nn.Module):
             residual = self.downsample(x)
 
         out += residual
-        out = self.relu(out)
+        out = self.activation(out)
 
         return out
 
@@ -121,13 +121,14 @@ class DetNet(nn.Module):
                 nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(self.expansion * planes)
             )
+        self.activation = nn.ReLU()
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.activation(self.bn1(self.conv1(x)))
+        out = self.activation(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
         out += self.downsample(x)
-        out = F.relu(out)
+        out = self.activation(out)
         return out
 
 
